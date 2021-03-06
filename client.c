@@ -4,6 +4,7 @@
  * as they would be used by many applications.
  */
 
+#include <jack/types.h>
 #include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
@@ -15,21 +16,13 @@
 #endif
 #include <jack/jack.h>
 
-jack_port_t *output_port1, *output_port2;
+jack_port_t *output_port1, *output_port2, *input_port;
 jack_client_t *client;
 
 #ifndef M_PI
 #define M_PI  (3.14159265)
 #endif
 
-#define TABLE_SIZE   (200)
-typedef struct
-{
-	float sine[TABLE_SIZE];
-	int left_phase;
-	int right_phase;
-}
-paTestData;
 
 static void signal_handler(int sig)
 {
@@ -45,27 +38,54 @@ static void signal_handler(int sig)
  * This client follows a simple rule: when the JACK transport is
  * running, copy the input port to the output.  When it stops, exit.
  */
+void zero_fill(jack_default_audio_sample_t *in,
+				jack_default_audio_sample_t *out1,
+				jack_default_audio_sample_t * out2,
+				jack_nframes_t nframes){
+	static int roo = 0;
+	for (int i = 0; i < nframes; i ++){
+		if(roo % 2){
+			out1[i] = in[i];
+			out2[i] = 0;
+		}
+		else{
+			out2[i] = in[i];
+			out1[i] = 0;
+		}
+		roo++;
+		roo = roo % 2;
+	}
+}
 
+void no_fill(jack_default_audio_sample_t *in,
+				jack_default_audio_sample_t *out1,
+				jack_default_audio_sample_t * out2,
+				jack_nframes_t nframes){
+	static int roo = 0;
+	int init_roo = roo;
+	for (int i = 0; i < nframes; i ++){
+		if(roo % 2){
+			out1[(i + init_roo)/ 2] = in[i];
+		}
+		else{
+			out2[(i + init_roo)/ 2] = in[i];
+		}
+		roo++;
+		roo = roo % 2;
+	}
+
+}
 int
-process (jack_nframes_t nframes, void *arg)
+process_callback (jack_nframes_t nframes, void *arg)
 {
-	jack_default_audio_sample_t *out1, *out2;
-	paTestData *data = (paTestData*)arg;
+	jack_default_audio_sample_t *out1, *out2, *in;
 	int i;
-
+	
 	out1 = (jack_default_audio_sample_t*)jack_port_get_buffer (output_port1, nframes);
 	out2 = (jack_default_audio_sample_t*)jack_port_get_buffer (output_port2, nframes);
+	in = (jack_default_audio_sample_t*)jack_port_get_buffer (input_port, nframes);
 
-	for( i=0; i<nframes; i++ )
-	{
-		out1[i] = data->sine[data->left_phase];  /* left */
-		out2[i] = data->sine[data->right_phase];  /* right */
-		data->left_phase += 1;
-		if( data->left_phase >= TABLE_SIZE ) data->left_phase -= TABLE_SIZE;
-		data->right_phase += 3; /* higher pitch so we can distinguish left and right. */
-		if( data->right_phase >= TABLE_SIZE ) data->right_phase -= TABLE_SIZE;
-	}
-    
+    no_fill(in, out1, out2, nframes);
 	return 0;      
 }
 
@@ -87,7 +107,6 @@ main (int argc, char *argv[])
 	const char *server_name = NULL;
 	jack_options_t options = JackNullOption;
 	jack_status_t status;
-	paTestData data;
 	int i;
 
 	if (argc >= 2) {		/* client name specified? */
@@ -105,12 +124,6 @@ main (int argc, char *argv[])
 			client_name++;
 		}
 	}
-
-	for( i=0; i<TABLE_SIZE; i++ )
-	{
-		data.sine[i] = 0.2 * (float) sin( ((double)i/(double)TABLE_SIZE) * M_PI * 2. );
-	}
-	data.left_phase = data.right_phase = 0;
   
 
 	/* open a client connection to the JACK server */
@@ -136,7 +149,7 @@ main (int argc, char *argv[])
 	   there is work to be done.
 	*/
 
-	jack_set_process_callback (client, process, &data);
+	jack_set_process_callback (client, process_callback, NULL);
 
 	/* tell the JACK server to call `jack_shutdown()' if
 	   it ever shuts down, either entirely, or if it
@@ -155,7 +168,11 @@ main (int argc, char *argv[])
 					  JACK_DEFAULT_AUDIO_TYPE,
 					  JackPortIsOutput, 0);
 
-	if ((output_port1 == NULL) || (output_port2 == NULL)) {
+	input_port = jack_port_register (client, "input",
+					  JACK_DEFAULT_AUDIO_TYPE,
+					  JackPortIsInput, 0);
+
+	if ((output_port1 == NULL) || (input_port == NULL)) {
 		fprintf(stderr, "no more JACK ports available\n");
 		exit (1);
 	}
@@ -184,10 +201,6 @@ main (int argc, char *argv[])
 	}
 
 	if (jack_connect (client, jack_port_name (output_port1), ports[0])) {
-		fprintf (stderr, "cannot connect output ports\n");
-	}
-
-	if (jack_connect (client, jack_port_name (output_port2), ports[1])) {
 		fprintf (stderr, "cannot connect output ports\n");
 	}
 
