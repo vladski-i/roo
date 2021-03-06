@@ -15,5 +15,5 @@
  - `./roo` should work and generate a sine
 
  ## Recommendations
-  - Although not needede for running roo, `libjack-jackd2-dev` is nice for VSCode intellisense
+  - Although not needede for running roo, `libjack-jackd2-dev` is nice for VSCode intellisense  
    `sudo apt install libjack-jackd2-dev` should do the trick for you
