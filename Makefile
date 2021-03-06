@@ -1,4 +1,4 @@
-wagger:client.c
-	gcc client.c -ljack -lm -o wagger
-clean: wagger
-	rm wagger
+roo:client.c
+	gcc client.c -ljack -lm -o roo
+clean: roo
+	rm roo
