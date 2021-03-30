@@ -1,9 +1,11 @@
 #include <jack/types.h>
 #include <jack/jack.h>
+#include "config.h"
 
 /*UNROO CALLBACK FUNCTION + HELPERS */
 extern jack_port_t *unroo_out, *unroo_in1, *unroo_in2;
- void unroo_zero_fill(jack_default_audio_sample_t *in1,
+static void 
+unroo_zero_fill(jack_default_audio_sample_t *in1,
 				jack_default_audio_sample_t *in2,
 				jack_default_audio_sample_t * out,
 				jack_nframes_t nframes){
@@ -13,7 +15,8 @@ extern jack_port_t *unroo_out, *unroo_in1, *unroo_in2;
 
 }
 
-void unroo_no_fill(jack_default_audio_sample_t *in1,
+static void 
+unroo_no_fill(jack_default_audio_sample_t *in1,
 				jack_default_audio_sample_t *in2,
 				jack_default_audio_sample_t * out,
 				jack_nframes_t nframes){
@@ -36,19 +39,30 @@ unroo_callback (jack_nframes_t nframes, void *arg)
 {
 	jack_default_audio_sample_t *out, *in1, *in2;
 	int i;
+	config_t args = *(config_t*)arg;
 	
 	out = (jack_default_audio_sample_t*)jack_port_get_buffer (unroo_out, nframes);
 	in1 = (jack_default_audio_sample_t*)jack_port_get_buffer (unroo_in1, nframes);
 	in2 = (jack_default_audio_sample_t*)jack_port_get_buffer (unroo_in2, nframes);
 
-    unroo_zero_fill(in1, in2, out, nframes);
+	switch(args.mode){
+		case ZERO_FILL:
+			unroo_zero_fill(in1, in2, out, nframes);
+			break;
+		case NO_FILL:
+			unroo_no_fill(in1, in2, out, nframes);
+			break;
+		default:
+			break;
+	}
 	return 0;      
 }
 
 
 /*ROO CALLBACK FUNCTION + HELPERS*/
 extern jack_port_t *roo_out1, *roo_out2, *roo_in;
-void roo_zero_fill(jack_default_audio_sample_t *in,
+static void 
+roo_zero_fill(jack_default_audio_sample_t *in,
 				jack_default_audio_sample_t *out1,
 				jack_default_audio_sample_t * out2,
 				jack_nframes_t nframes){
@@ -67,7 +81,8 @@ void roo_zero_fill(jack_default_audio_sample_t *in,
 	}
 }
 
-void roo_no_fill(jack_default_audio_sample_t *in,
+static void 
+roo_no_fill(jack_default_audio_sample_t *in,
 				jack_default_audio_sample_t *out1,
 				jack_default_audio_sample_t * out2,
 				jack_nframes_t nframes){
@@ -90,11 +105,22 @@ roo_callback (jack_nframes_t nframes, void *arg)
 {
 	jack_default_audio_sample_t *out1, *out2, *in;
 	int i;
+	config_t args = *(config_t*)arg;
 	
 	out1 = (jack_default_audio_sample_t*)jack_port_get_buffer (roo_out1, nframes);
 	out2 = (jack_default_audio_sample_t*)jack_port_get_buffer (roo_out2, nframes);
 	in = (jack_default_audio_sample_t*)jack_port_get_buffer (roo_in, nframes);
-
+	switch (args.mode)
+	{
+		case ZERO_FILL:
+			roo_zero_fill(in, out1, out2, nframes);
+			break;
+		case NO_FILL:
+			roo_no_fill(in, out1, out2, nframes);
+			break;
+		default:
+			break;
+	}
     roo_zero_fill(in, out1, out2, nframes);
 	return 0;      
 }

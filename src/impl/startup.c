@@ -1,5 +1,3 @@
-// #include "startup.h"
-// #include <jack/types.h>
 #include <stdio.h>
 #include <jack/types.h>
 #include <jack/jack.h>
