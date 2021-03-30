@@ -8,11 +8,13 @@
  - The image's entrypont is `make` so any arguments passed after  
  `docker run -v $(pwd):/roo roo-build roo`  
   are passed to make e.g.  
-  `docker run -v $(pwd):/roo roo-build roo clean`
+  `docker run -v $(pwd):/roo roo-build clean`
 
 
 ## How to run
- - `./roo` should work and generate a sine
+ - `./build/roo` or `make run` starts the clients
+ - go to Carla or your patchbay of choice
+ - connect the ports and send some audio through
 
  ## Recommendations
   - Although not needed for running roo, `libjack-jackd2-dev` is nice for VSCode intellisense  
